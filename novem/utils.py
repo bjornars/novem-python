@@ -105,7 +105,14 @@ def get_config_path() -> Tuple[str, str]:
 
 
 def get_current_config(
-    **kwargs: Any,
+    *, 
+    token: Optional[str] = None,
+    api_root: Optional[str] = None,
+    ignore_ssl: bool = False,
+    ignore_config: bool = False,
+    config_path: Optional[str] = None,
+    profile: Optional[str] = None,
+
 ) -> Tuple[bool, Config]:
     """
     Resolve and return the current config options
@@ -119,20 +126,18 @@ def get_current_config(
 
     co = Config(
         {
-            "token": kwargs.get("token", None),
-            "api_root": kwargs.get("api_root", API_ROOT),
-            "ignore_ssl_warn": kwargs.get("ignore_ssl", False),
+            "token": token,
+            "api_root": api_root or API_ROOT,
+            "ignore_ssl_warn": ignore_ssl,
         }
     )
 
-    if kwargs.get("token", False) or "ignore_config" in kwargs:
+    if token or ignore_config:
         return True, co
 
     # config path can be supplied as an option, if it is use that
-    if "config_path" not in kwargs or not kwargs["config_path"]:
-        (novem_dir, config_path) = get_config_path()
-    else:
-        config_path = kwargs["config_path"]
+    if not config_path:
+        _, config_path = get_config_path()
 
     config = configparser.ConfigParser()
     config.read(config_path)
@@ -140,7 +145,7 @@ def get_current_config(
     # the configuration file has an invalid format
     try:
         general = config["general"]
-        profile = general["profile"]
+        default_profile = general["profile"]
         if "api_root" in general:
             co["api_root"] = general["api_root"]
 
@@ -148,7 +153,7 @@ def get_current_config(
         return (False, co)
 
     # override profile
-    profile = kwargs.get("profile") or profile
+    profile = profile or default_profile
 
     # get our config
     try:
@@ -165,12 +170,8 @@ def get_current_config(
     except KeyError:
         return (True, co)
 
-    # kwargs supercedes
-    if kwargs.get("api_root", False):
-        co["api_root"] = kwargs["api_root"]
-
-    if kwargs.get("token", False):
-        co["token"] = kwargs["token"]
+    if api_root:
+        co["api_root"] = api_root
 
     co["profile"] = profile
     return (True, co)
