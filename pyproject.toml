@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "novem"
+version = "0.5.0"  # do not touch manually, use `poetry run bump_version`
+description = "python library for the novem data visualisation platform"
+authors = ["Sondov Engen <sondov@novem.no>", "Bjørnar Snoksrud <bjornars@novem.no>", "Martin Myrseth <myme@novem.no>"]
+homepage = "https://novem.io"
+repository = "https://github.com/novem-code/novem-python"
+readme = "README.md"
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10.0"
+requests = "^2.26.0"
+pyreadline3 = "^3.4.1"
+colorama = "^0.4.6"
+typing-extensions = "^4.9.0"
+
+# [tool.poetry.scripts]
+# novem = 'novem.cli:run_cli'
+# bump_version = 'scripts.bump_version:main'
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.1.1"
+isort = "^5.13.2"
+mypy = "^1.11.2"
+pre-commit = "^2.16.0"
+pydantic = "^2.8.2"
+pyfakefs = "^5.6.0"
+pytest = "^8.3.2"
+pytest-cov = "^5.0.0"
+requests-mock = "^1.12.1"
+types-requests = "^2.27.7"
+black = "^24.8.0"
+pandas = "2.2.2"
+pandas-stubs = "2.2.2.240807"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+(
+  /( \.git )/
+)
+'''
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 120
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore::UserWarning",
+]
