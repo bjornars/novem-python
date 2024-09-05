@@ -2,45 +2,42 @@ import datetime
 import email.utils as eut
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from novem.exceptions import Novem404
+from novem.types import Config, VisType
 
 from ..api_ref import NovemAPI
 from ..utils import cl, colors, get_current_config, pretty_format
 
 
-def list_vis(args: Dict[str, Any], type: str) -> None:
+def list_vis(
+    config: Config,
+    type: VisType,
+    *,
+    for_user: Optional[str] = None,
+    group: Optional[str] = None,
+    org: Optional[str] = None,
+    filter: Optional[str] = None,
+    list: bool = False,
+) -> None:
     colors()
     # get current plot list
 
-    pfx = type[0].lower()
-
-    novem = NovemAPI(**args, is_cli=True)
+    novem = NovemAPI(config)
     # see if list flag is set
-
-    (config_status, config) = get_current_config(**args)
 
     plist = []
 
-    usr = config["username"]
-    if "for_user" in args and args["for_user"]:
-        usr = args["for_user"]
+    usr = for_user or config.username
 
-    path = f"u/{usr}/{pfx}/"
+    path = f"u/{usr}/{type.name}/"
 
-    if "group" in args:
+    if group:
         # we're listing vis for a group
         query = ""
-        group = args["group"]
-        org = ""
-        fu = ""
-
-        if "for_user" in args and args["for_user"]:
-            fu = args["for_user"]
-
-        if "org" in args:
-            org = args["org"]
+        org = org or ""
+        fu = for_user or ""
 
         if group[0] in ["@", "+"]:
             query = group
@@ -52,15 +49,15 @@ def list_vis(args: Dict[str, Any], type: str) -> None:
             query = ""
 
         if query:
-            path = f"o/{query}/{pfx}/"
+            path = f"o/{query}/{type.name}/"
 
     try:
         plist = json.loads(novem.read(path))
     except Novem404:
         plist = []
 
-    if "filter" in args and args["filter"]:
-        fv = args["filter"]
+    if filter:
+        fv = filter
         if fv[0] != "^":
             fv = f".*{fv}"
         if fv[-1] != "$":
@@ -72,8 +69,7 @@ def list_vis(args: Dict[str, Any], type: str) -> None:
 
     plist = sorted(plist, key=lambda x: x["id"])
 
-    if args["list"]:
-
+    if list:
         # print to terminal
         for p in plist:
             print(p["id"])
@@ -194,23 +190,17 @@ def share_pretty_print(iplist: List[Dict[str, str]]) -> None:
     print(ppl)
 
 
-def list_vis_shares(vis_name: str, args: Dict[str, str], type: str) -> None:
-
-    novem = NovemAPI(**args, is_cli=True)
+def list_vis_shares(vis_name: str, config: Config, type: VisType, *, list: bool) -> None:
+    config.is_cli = True
+    novem = NovemAPI(config)
     # see if list flag is set
 
-    pth = type.lower()
-
-    (config_status, config) = get_current_config(**args)
-
-    plist = []
-
     try:
-        plist = json.loads(novem.read(f"vis/{pth}s/{vis_name}/shared"))
+        plist = json.loads(novem.read(f"vis/{type.name}s/{vis_name}/shared"))
     except Novem404:
         plist = []
 
-    if args["list"]:
+    if list:
         # print to terminal
         for p in plist:
             print(p["name"])

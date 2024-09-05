@@ -104,77 +104,77 @@ def get_config_path() -> Tuple[str, str]:
     return (novem_dir, novem_config)
 
 
-def get_current_config(
-    *, 
-    token: Optional[str] = None,
-    api_root: Optional[str] = None,
-    ignore_ssl: bool = False,
-    ignore_config: bool = False,
-    config_path: Optional[str] = None,
-    profile: Optional[str] = None,
-
-) -> Tuple[bool, Config]:
-    """
-    Resolve and return the current config options
-
-    Contains :
-    current user
-    current profile
-    current token
-    current api_root
-    """
-
-    co = Config(
-        {
-            "token": token,
-            "api_root": api_root or API_ROOT,
-            "ignore_ssl_warn": ignore_ssl,
-        }
-    )
-
-    if token or ignore_config:
-        return True, co
-
-    # config path can be supplied as an option, if it is use that
-    if not config_path:
-        _, config_path = get_config_path()
-
-    config = configparser.ConfigParser()
-    config.read(config_path)
-
-    # the configuration file has an invalid format
-    try:
-        general = config["general"]
-        default_profile = general["profile"]
-        if "api_root" in general:
-            co["api_root"] = general["api_root"]
-
-    except KeyError:
-        return (False, co)
-
-    # override profile
-    profile = profile or default_profile
-
-    # get our config
-    try:
-        uc = config[f"profile:{profile}"]
-        if "api_root" in uc:
-            co["api_root"] = uc["api_root"]
-
-        co["token"] = uc["token"]
-        co["username"] = uc["username"]
-
-        if "ignore_ssl_warn" in uc:
-            co["ignore_ssl_warn"] = uc.getboolean("ignore_ssl_warn")
-
-    except KeyError:
-        return (True, co)
-
-    if api_root:
-        co["api_root"] = api_root
-
-    co["profile"] = profile
-    return (True, co)
+#def get_current_config(
+#    *, 
+#    token: Optional[str] = None,
+#    api_root: Optional[str] = None,
+#    ignore_ssl: bool = False,
+#    ignore_config: bool = False,
+#    config_path: Optional[str] = None,
+#    profile: Optional[str] = None,
+#
+#) -> Tuple[bool, Config]:
+#    """
+#    Resolve and return the current config options
+#
+#    Contains :
+#    current user
+#    current profile
+#    current token
+#    current api_root
+#    """
+#
+#    co = Config(
+#        {
+#            "token": token,
+#            "api_root": api_root or API_ROOT,
+#            "ignore_ssl_warn": ignore_ssl,
+#        }
+#    )
+#
+#    if token or ignore_config:
+#        return True, co
+#
+#    # config path can be supplied as an option, if it is use that
+#    if not config_path:
+#        _, config_path = get_config_path()
+#
+#    config = configparser.ConfigParser()
+#    config.read(config_path)
+#
+#    # the configuration file has an invalid format
+#    try:
+#        general = config["general"]
+#        default_profile = general["profile"]
+#        if "api_root" in general:
+#            co["api_root"] = general["api_root"]
+#
+#    except KeyError:
+#        return (False, co)
+#
+#    # override profile
+#    profile = profile or default_profile
+#
+#    # get our config
+#    try:
+#        uc = config[f"profile:{profile}"]
+#        if "api_root" in uc:
+#            co["api_root"] = uc["api_root"]
+#
+#        co["token"] = uc["token"]
+#        co["username"] = uc["username"]
+#
+#        if "ignore_ssl_warn" in uc:
+#            co["ignore_ssl_warn"] = uc.getboolean("ignore_ssl_warn")
+#
+#    except KeyError:
+#        return (True, co)
+#
+#    if api_root:
+#        co["api_root"] = api_root
+#
+#    co["profile"] = profile
+#    return (True, co)
 
 
 def pretty_format(values: List[Dict[str, str]], order: List[Dict[str, Any]]) -> str:

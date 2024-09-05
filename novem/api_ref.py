@@ -1,10 +1,11 @@
 import sys
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import requests
 
-from .utils import get_current_config
+from novem.types import Config
+
 from .version import __version__
 
 
@@ -52,17 +53,13 @@ class NovemAPI(object):
     _type: Optional[str] = None
     _qpr: Optional[str] = None
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, config: Config) -> None:
         """ """
-
-        config_status, config = get_current_config(**kwargs)
-
-        self._config = config
         self._session = requests.Session()
-        self._session.headers.update(get_ua(kwargs.get("is_cli", False)))
+        self._session.headers.update(get_ua(config.is_cli))
         self._session.proxies = urllib.request.getproxies()
 
-        if self._config["ignore_ssl_warn"]:
+        if config.ignore_ssl_warn:
             # supress ssl warnings
             self._session.verify = False
             import urllib3
@@ -70,22 +67,21 @@ class NovemAPI(object):
             urllib3.disable_warnings()
 
         # api root should always be supplied in the result
-        self._api_root = config["api_root"]
+        self._api_root = config.api_root
 
-        if config.get("token", None):
-            assert config["token"]
-            self.token = config["token"]
+        if config.token:
+            self.token = config.token
             self._session.auth = ("", self.token)
 
-        elif not config_status:
-            print(
-                """\
-Novem config file is missing.  Either specify config file location with
-the config_path parameter, or setup a new token using
-$ python -m novem --init
-"""
-            )
-            sys.exit(0)
+#        elif not config_status:
+#            print(
+#                """\
+#Novem config file is missing.  Either specify config file location with
+#the config_path parameter, or setup a new token using
+#$ python -m novem --init
+#"""
+#            )
+#            sys.exit(0)
 
         if self._api_root[-1] != "/":
             # our code assumes that the api_root ends with a /
@@ -100,7 +96,6 @@ $ python -m novem --init
             self._api_root = kwargs["api_root"]
 
     def create_token(self, params: Dict[str, str]) -> Dict[str, str]:
-
         r = self._session.post(
             f"{self._api_root}token",
             auth=None,
@@ -112,9 +107,7 @@ $ python -m novem --init
             if r.status_code == 401:
                 raise Novem401(resp["message"])
 
-        res = r.json()
-
-        return res
+        return cast(Dict[str, str], r.json())
 
     def delete(self, path: str) -> bool:
 

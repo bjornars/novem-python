@@ -1,32 +1,28 @@
 import datetime
 import email.utils as eut
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from novem.exceptions import Novem404
+from novem.types import Config
 
 from ..api_ref import NovemAPI
 from ..utils import cl, pretty_format
 
 
-def list_invites(args: Dict[str, Any], novem: NovemAPI) -> None:
+def list_invites(api: NovemAPI, *, list: bool) -> None:
     """
     List pending invites
     """
 
-    # see if list flag is set
-
-    ilist = []
-
     try:
-        ilist = json.loads(novem.read("/admin/invites/"))
+        ilist = json.loads(api.read("/admin/invites/"))
     except Novem404:
         ilist = []
 
     ilist = sorted(ilist, key=lambda x: x["name"])
 
-    if args["list"]:
-
+    if list:
         # print to terminal
         for p in ilist:
             print(p["name"])
@@ -122,20 +118,25 @@ def list_invites(args: Dict[str, Any], novem: NovemAPI) -> None:
     print(ppl)
 
 
-def invite(args: Dict[str, Any]) -> None:
-    novem = NovemAPI(**args, is_cli=True)
+def invite(
+    config: Config,
+    *,
+    invite: Optional[str] = None,
+    accept: bool = False,
+    reject: bool = False,
+) -> None:
+    config.is_cli = True
+    novem = NovemAPI(config, is_cli=True)
 
-    # we are invoked so plot must exist
-    invite_name = args["invite"]
 
-    if invite_name is None:
+    if invite is None:
         # we need to list plots
-        list_invites(args, novem)
+        list_invites(config, novem)
         return
 
     # check if
-    if "accept" in args and args["accept"]:
-        novem.write(f"/admin/invites/{invite_name}/accept", "yes")
+    if accept:
+        novem.write(f"/admin/invites/{invite}/accept", "yes")
 
-    elif "reject" in args and args["reject"]:
-        novem.write(f"/admin/invites/{invite_name}/accept", "no")
+    elif reject:
+        novem.write(f"/admin/invites/{invite}/accept", "no")

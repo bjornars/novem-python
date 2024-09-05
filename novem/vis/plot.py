@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 
+from novem.types import Config
 from novem.vis import NovemVisAPI
 
 from .cell import NovemCellConfig
@@ -16,7 +17,7 @@ class Plot(NovemVisAPI):
     cell: Optional[NovemCellConfig] = None
     config: Optional[NovemPlotConfig] = None
 
-    def __init__(self, id: str, **kwargs: Any) -> None:
+    def __init__(self, id: str, config: Config, **kwargs: Any) -> None:
         """
         :id plot name, duplicate entry will update the plot
 
