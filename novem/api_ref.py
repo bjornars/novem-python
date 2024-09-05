@@ -4,8 +4,8 @@ from typing import Dict
 
 import requests
 
-from novem.types import Config, TokenResponse
-
+from .exceptions import Novem401, Novem404
+from .types_ import Config, TokenResponse
 from .version import __version__
 
 
@@ -15,29 +15,6 @@ def get_ua(is_cli: bool) -> Dict[str, str]:
     return {
         "User-Agent": f"{name}/{__version__} Python/{py_version}",
     }
-
-
-class NovemException(Exception):
-    pass
-
-
-class Novem404(NovemException):
-    def __init__(self, message: str):
-
-        # 404 errors can occur if users are not authenticated, let them know
-        # future improvement: consider requesting a fixed endpoint (like
-        # whoami) and notify if not authenticated
-        message = f"Resource not found: {message} (Are you authenticated?)"
-
-        super().__init__(message)
-
-
-class Novem403(NovemException):
-    pass
-
-
-class Novem401(NovemException):
-    pass
 
 
 class NovemAPI:
@@ -50,23 +27,23 @@ class NovemAPI:
 
     def __init__(self, config: Config) -> None:
         """ """
-        self._session = requests.Session()
-        self._session.headers.update(get_ua(config.is_cli))
-        self._session.proxies = urllib.request.getproxies()
+        self.session = requests.Session()
+        self.session.headers.update(get_ua(config.is_cli))
+        self.session.proxies = urllib.request.getproxies()
 
         if config.ignore_ssl_warn:
             # supress ssl warnings
-            self._session.verify = False
+            self.session.verify = False
             import urllib3
 
             urllib3.disable_warnings()
 
-        self._api_root = config.api_root
-        self._api_root = self._api_root.rstrip("/") + "/"
+        self.root = config.api_root
+        self.root = self.root.rstrip("/") + "/"
 
         if config.token:
             self.token = config.token
-            self._session.auth = ("", self.token)
+            self.session.auth = ("", self.token)
         else:
             print(
                 """\
@@ -79,8 +56,8 @@ $ python -m novem --init
 
 
     def create_token(self, params: Dict[str, str]) -> TokenResponse:
-        r = self._session.post(
-            f"{self._api_root}token",
+        r = self.session.post(
+            f"{self.root}token",
             auth=None,
             json=params,
         )
@@ -89,13 +66,13 @@ $ python -m novem --init
             resp = r.json()
             if r.status_code == 401:
                 raise Novem401(resp["message"])
-        resp: TokenResponse = r.json()
-        return resp
+        token: TokenResponse = r.json()
+        return token
 
     def delete(self, path: str) -> bool:
 
-        r = self._session.delete(
-            f"{self._api_root}{path}",
+        r = self.session.delete(
+            f"{self.root}{path}",
         )
 
         if not r.ok:
@@ -109,8 +86,8 @@ $ python -m novem --init
 
     def read(self, path: str) -> str:
 
-        r = self._session.get(
-            f"{self._api_root}{path}",
+        r = self.session.get(
+            f"{self.root}{path}",
         )
 
         if not r.ok:
@@ -122,8 +99,8 @@ $ python -m novem --init
 
     def write(self, path: str, value: str) -> None:
 
-        r = self._session.post(
-            f"{self._api_root}{path}",
+        r = self.session.post(
+            f"{self.root}{path}",
             headers={
                 "Content-type": "text/plain",
             },
@@ -139,8 +116,8 @@ $ python -m novem --init
 
     def create(self, path: str) -> None:
 
-        r = self._session.put(
-            f"{self._api_root}{path}",
+        r = self.session.put(
+            f"{self.root}{path}",
         )
 
         if not r.ok:
