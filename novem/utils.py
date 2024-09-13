@@ -8,7 +8,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-from novem.types import Config
+# from novem.types_ import Config
 
 API_ROOT = "https://api.novem.no/v1/"
 NOVEM_PATH = "novem"

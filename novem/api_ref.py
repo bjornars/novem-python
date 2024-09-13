@@ -1,11 +1,11 @@
 import sys
 import urllib.request
-from typing import Any, Dict, Optional, cast
+from typing import Dict
 
 import requests
 
-from novem.types import Config
-
+from .exceptions import Novem401, Novem404
+from .types_ import Config, TokenResponse
 from .version import __version__
 
 
@@ -17,87 +17,47 @@ def get_ua(is_cli: bool) -> Dict[str, str]:
     }
 
 
-class NovemException(Exception):
-    pass
-
-
-class Novem404(NovemException):
-    def __init__(self, message: str):
-
-        # 404 errors can occur if users are not authenticated, let them know
-        # future improvement: consider requesting a fixed endpoint (like
-        # whoami) and notify if not authenticated
-        message = f"Resource not found: {message} (Are you authenticated?)"
-
-        super().__init__(message)
-
-
-class Novem403(NovemException):
-    pass
-
-
-class Novem401(NovemException):
-    pass
-
-
-class NovemAPI(object):
+class NovemAPI:
     """
     Novem API class
 
     * Read config file
     * Communicate with api.novem.no
-    * Offer utilities for subclasses
     """
-
-    id: Optional[str] = None
-    _type: Optional[str] = None
-    _qpr: Optional[str] = None
 
     def __init__(self, config: Config) -> None:
         """ """
-        self._session = requests.Session()
-        self._session.headers.update(get_ua(config.is_cli))
-        self._session.proxies = urllib.request.getproxies()
+        self.session = requests.Session()
+        self.session.headers.update(get_ua(config.is_cli))
+        self.session.proxies = urllib.request.getproxies()
 
         if config.ignore_ssl_warn:
             # supress ssl warnings
-            self._session.verify = False
+            self.session.verify = False
             import urllib3
 
             urllib3.disable_warnings()
 
-        # api root should always be supplied in the result
-        self._api_root = config.api_root
+        self.root = config.api_root
+        self.root = self.root.rstrip("/") + "/"
 
         if config.token:
             self.token = config.token
-            self._session.auth = ("", self.token)
+            self.session.auth = ("", self.token)
+        else:
+            print(
+                """\
+Novem config file is missing.  Either specify config file location with
+the config_path parameter, or setup a new token using
+$ python -m novem --init
+"""
+            )
+            sys.exit(0)
 
-#        elif not config_status:
-#            print(
-#                """\
-#Novem config file is missing.  Either specify config file location with
-#the config_path parameter, or setup a new token using
-#$ python -m novem --init
-#"""
-#            )
-#            sys.exit(0)
 
-        if self._api_root[-1] != "/":
-            # our code assumes that the api_root ends with a /
-            self._api_root = f"{self._api_root}/"
-
-    def _parse_kwargs(self, **kwargs: Any) -> None:
-        """
-        Parse the arguments and invoke the novem api
-        """
-
-        if "api_root" in kwargs:
-            self._api_root = kwargs["api_root"]
-
-    def create_token(self, params: Dict[str, str]) -> Dict[str, str]:
-        r = self._session.post(
-            f"{self._api_root}token",
+    def create_token(self, params: Dict[str, str]) -> TokenResponse:
+        r = self.session.post(
+            f"{self.root}token",
             auth=None,
             json=params,
         )
@@ -106,13 +66,13 @@ class NovemAPI(object):
             resp = r.json()
             if r.status_code == 401:
                 raise Novem401(resp["message"])
-
-        return cast(Dict[str, str], r.json())
+        token: TokenResponse = r.json()
+        return token
 
     def delete(self, path: str) -> bool:
 
-        r = self._session.delete(
-            f"{self._api_root}{path}",
+        r = self.session.delete(
+            f"{self.root}{path}",
         )
 
         if not r.ok:
@@ -126,8 +86,8 @@ class NovemAPI(object):
 
     def read(self, path: str) -> str:
 
-        r = self._session.get(
-            f"{self._api_root}{path}",
+        r = self.session.get(
+            f"{self.root}{path}",
         )
 
         if not r.ok:
@@ -139,8 +99,8 @@ class NovemAPI(object):
 
     def write(self, path: str, value: str) -> None:
 
-        r = self._session.post(
-            f"{self._api_root}{path}",
+        r = self.session.post(
+            f"{self.root}{path}",
             headers={
                 "Content-type": "text/plain",
             },
@@ -156,8 +116,8 @@ class NovemAPI(object):
 
     def create(self, path: str) -> None:
 
-        r = self._session.put(
-            f"{self._api_root}{path}",
+        r = self.session.put(
+            f"{self.root}{path}",
         )
 
         if not r.ok:

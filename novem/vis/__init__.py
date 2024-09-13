@@ -3,6 +3,7 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 from novem.exceptions import Novem403, Novem404
+from novem.types_ import Config
 
 from ..api_ref import NovemAPI
 from ..utils import cl
@@ -11,31 +12,21 @@ from .files import NovemFiles
 from .shared import NovemShare
 
 
-class NovemVisAPI(NovemAPI):
+class NovemVisAPI:
     shared: Optional[NovemShare] = None
     files: Optional[NovemFiles] = None
 
-    _vispath: Optional[str] = None
-    _debug: bool = False
+    def __init__(self, config: Config, *, vispath: str, id: str, create: bool, user: Optional[str], qpr: Optional[str]) -> None:
+        self._config = config
+        self._api = NovemAPI(config)
+        self._vispath = vispath
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        self.user = None
-
-        if "debug" in kwargs and kwargs["debug"]:
-            self._debug = True
-
-        if "create" not in kwargs or kwargs["create"]:
-            # let's create our plot if -C specified, always
-            # create when used as an api unless specifically told not to
+        if create:
             self.api_create("")
 
-        if "user" in kwargs and kwargs["user"]:
-            self.user = kwargs["user"]
-
-        if "qpr" in kwargs and kwargs["qpr"]:
-            self._qpr = kwargs["qpr"].replace(",", "&")
+        self.user = user
+        self.id = id
+        self._qpr = qpr.replace(",", "&") if qpr else None
 
         self.shared = NovemShare(self)
         self.files = NovemFiles(self)
@@ -51,17 +42,17 @@ class NovemVisAPI(NovemAPI):
         Iterate over current id and dump output to supplied path
         """
 
-        qpath = f"{self._api_root}vis/{self._vispath}/{self.id}/"
+        qpath = f"{self._api.root}vis/{self._vispath}/{self.id}/"
 
         if self.user:
-            qpath = f"{self._api_root}users/{self.user}/vis/" f"{self._vispath}/{self.id}/"
+            qpath = f"{self._api.root}users/{self.user}/vis/" f"{self._vispath}/{self.id}/"
 
         # create util function
         def rec_tree(path: str) -> None:
             qp = f"{qpath}{path}"
             fp = f"{outpath}{path}"
             # print(f"QP: {qp}")
-            req = self._session.get(qp)
+            req = self._api.session.get(qp)
 
             if not req.ok:
                 return None
@@ -101,10 +92,10 @@ class NovemVisAPI(NovemAPI):
 
         clrs()
 
-        qpath = f"{self._api_root}vis/{self._vispath}/{self.id}{relpath}"
+        qpath = f"{self._api.root}vis/{self._vispath}/{self.id}{relpath}"
 
         if self.user:
-            qpath = f"{self._api_root}users/{self.user}/vis/" f"{self._vispath}/{self.id}{relpath}"
+            qpath = f"{self._api.root}users/{self.user}/vis/" f"{self._vispath}/{self.id}{relpath}"
 
         # TODO: we're using some hard coded unicode symbols and colors here
         # probably better to make this configurable by the user and perhaps
@@ -122,7 +113,7 @@ class NovemVisAPI(NovemAPI):
         # create util function
         def rec_tree(path: str, level: int = 0, last: List[bool] = [False]) -> Tuple[List[str], str]:
             qp = f"{qpath}{path}"
-            req = self._session.get(qp)
+            req = self._api.session.get(qp)
 
             if not req.ok:
                 return ([], "")
@@ -214,21 +205,21 @@ class NovemVisAPI(NovemAPI):
         Read the api value located at realtive path
         """
 
-        qpath = f"{self._api_root}vis/{self._vispath}/{self.id}{relpath}"
+        qpath = f"{self._api.root}vis/{self._vispath}/{self.id}{relpath}"
 
         # We can read information from other users, but not perform any
         # other actions so only the GET method supports the custom user
         # pathing
         if self.user:
-            qpath = f"{self._api_root}users/{self.user}/vis/" f"{self._vispath}/{self.id}{relpath}"
+            qpath = f"{self._api.root}users/{self.user}/vis/" f"{self._vispath}/{self.id}{relpath}"
 
         if self._qpr and len(self._qpr):
             qpath = f"{qpath}?{self._qpr}"
 
-        if self._debug:
+        if self._config.debug:
             print(f"GET: {qpath}")
 
-        r = self._session.get(qpath)
+        r = self._api.session.get(qpath)
 
         # TODO: verify result and raise exception if not ok
         if r.status_code == 404:
@@ -240,21 +231,21 @@ class NovemVisAPI(NovemAPI):
         return r.content.decode("utf-8")
 
     def api_read_bytes(self, relpath: str) -> bytes:
-        qpath = f"{self._api_root}vis/{self._vispath}/{self.id}{relpath}"
+        qpath = f"{self._api.root}vis/{self._vispath}/{self.id}{relpath}"
 
         # We can read information from other users, but not perform any
         # other actions so only the GET method supports the custom user
         # pathing
         if self.user:
-            qpath = f"{self._api_root}users/{self.user}/vis/" f"{self._vispath}/{self.id}{relpath}"
+            qpath = f"{self._api.root}users/{self.user}/vis/" f"{self._vispath}/{self.id}{relpath}"
 
         if self._qpr and len(self._qpr):
             qpath = f"{qpath}?{self._qpr}"
 
-        if self._debug:
+        if self._config.debug:
             print(f"GET: {qpath}")
 
-        r = self._session.get(qpath)
+        r = self._api.session.get(qpath)
 
         # TODO: verify result and raise exception if not ok
         if r.status_code == 404:
@@ -275,12 +266,12 @@ class NovemVisAPI(NovemAPI):
             print(f"you cannot modify another users {self._vispath}")
             return
 
-        path = f"{self._api_root}vis/{self._vispath}/{self.id}{relpath}"
+        path = f"{self._api.root}vis/{self._vispath}/{self.id}{relpath}"
 
-        if self._debug:
+        if self._config.debug:
             print(f"DELETE: {path}")
 
-        r = self._session.delete(path)
+        r = self._api.session.delete(path)
 
         if r.status_code == 404:
             raise Novem404(path)
@@ -310,12 +301,12 @@ class NovemVisAPI(NovemAPI):
             print(f"you cannot modify another users {self._vispath}")
             return
 
-        path = f"{self._api_root}vis/{self._vispath}/{self.id}{relpath}"
+        path = f"{self._api.root}vis/{self._vispath}/{self.id}{relpath}"
 
-        if self._debug:
+        if self._config.debug:
             print(f"PUT: {path}")
 
-        r = self._session.put(path)
+        r = self._api.session.put(path)
 
         if r.status_code == 404:
             raise Novem404(path)
@@ -350,12 +341,12 @@ class NovemVisAPI(NovemAPI):
             print(f"you cannot modify another users {self._vispath}")
             return
 
-        path = f"{self._api_root}vis/{self._vispath}/{self.id}{relpath}"
+        path = f"{self._api.root}vis/{self._vispath}/{self.id}{relpath}"
 
-        if self._debug:
+        if self._config.debug:
             print(f"POST: {path}")
 
-        r = self._session.post(
+        r = self._api.session.post(
             path,
             headers={"Content-type": "text/plain"},
             data=value.encode("utf-8"),
