@@ -11,7 +11,7 @@ permissions:
 jobs:
   notify_push:
     if: github.repository_owner == 'novem-code' && github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'Merge pull request')
-    uses: novem-code/github-actions/.github/workflows/discord_push.yml@v4
+    uses: novem-code/github-actions/.github/workflows/discord_push.yml@7d5ccc27529a994252f9b802f042477467ffac8e
     with:
       branch_name: 'main'
       commit_message: ${{ github.event.head_commit.message }}
